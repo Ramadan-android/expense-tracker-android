@@ -1,7 +1,6 @@
 package com.example.expensetracker.viewModel
 
 import android.os.Build
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -94,7 +93,7 @@ class DashboardViewModel @Inject constructor(
                     totalDay = today,
                     totalWeek = week,
                     totalMonth = month,
-                    salery = salery,
+                    salary = salery,
                     balance = balance,
                     weekChart = weekChartData,
                     monthChart = monthChartData

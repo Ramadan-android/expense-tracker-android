@@ -64,8 +64,7 @@ fun SingleChoiceWrapFilter(
 
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp),
     ) {
         categoryList.forEach { option ->
             FilterChip(
