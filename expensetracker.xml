@@ -1,0 +1,3419 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+data/
+  converters/
+    converters.kt
+  database/
+    expense/
+      DatabaseModule.kt
+      Expense.kt
+      ExpenseDao.kt
+      ExpenseDatabase.kt
+    user/
+      DatabaseModule.kt
+      User.kt
+      UserDao.kt
+      UserDatabase.kt
+  DataRepositores/
+    RepositoryImpl.kt
+    UserRepositryImp.kt
+  mapper/
+    ExpenseMapper.kt
+    UserMapper.kt
+domain/
+  model/
+    Expense.kt
+    User.kt
+  repository/
+    ExpenseRepository.kt
+    UserRepositry.kt
+route/
+  ExpenseNavGraph.kt
+  Routes.kt
+ui/
+  theme/
+    Color.kt
+    Theme.kt
+    Type.kt
+view/
+  addEditExpense/
+    AddEditExpenseRoute.kt
+    AddEditExpenseScreen.kt
+  composable/
+    dialog/
+      dropDown/
+        FilterDropdown.kt
+        FilterIcon.kt
+      AlertDialog.kt
+    CoustemButton.kt
+    CoustemMultiChoiceSegmentedButtonRow.kt
+    DashboardTotals.kt
+    DatePickerDialog.kt
+    DeleteIcon.kt
+    expenseCard.kt
+    ExpenseTextField.kt
+    FilterIcon.kt
+    MonthlyBarChart.kt
+    text.kt
+    VerticalSpacer.kt
+    WeeklyLineChart.kt
+  dashboardDetails/
+    DashboardDetailsRoute.kt
+    DashboardDetailsScreen.kt
+  listExpense/
+    listExpenseRoute.kt
+    listExpenseScreen.kt
+  onboarding/
+    OnboardingRoute.kt
+    OnboardingScreen.kt
+viewModel/
+  mapper/
+    ExpenseUiMapper.kt
+    UserUiMapper.kt
+  model/
+    ExpenseUi.kt
+    UserUi.kt
+  state/
+    AddEditExpenseUiState.kt
+    DashboardUiState.kt
+    ExpenseListUiState.kt
+    OnboardingUiState.kt
+    UiEvent.kt
+    UserState.kt
+  AddEditViewModel.kt
+  DashboardViewModel.kt
+  ListExpenseViewModel.kt
+  OnboardingViewModel.kt
+  UserStateViewModel.kt
+MainActivity.kt
+MyExpense.kt
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="data/converters/converters.kt">
+package com.example.expensetracker.data.converters
+
+import androidx.room.TypeConverter
+import com.example.expensetracker.domain.model.ExpenseCategory
+
+class Converters {
+    @TypeConverter
+    fun fromCategory(category: ExpenseCategory): String = category.name
+
+    @TypeConverter
+    fun toCategory(value: String): ExpenseCategory = ExpenseCategory.valueOf(value)
+}
+</file>
+
+<file path="data/database/expense/DatabaseModule.kt">
+package com.example.expensetracker.data.database.expense
+
+import android.content.Context
+import androidx.room.Room
+import com.example.expensetracker.data.DataRepositores.DatabaseRepositoryImpl
+import com.example.expensetracker.data.mapper.ExpenseMapper
+import com.example.expensetracker.domain.repository.DataRepository
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
+    private const val databaseName = "MyExpenseDatabase"
+
+    @Provides
+    @Singleton
+    fun provideDatabase(
+        @ApplicationContext context: Context
+    ): ExpenseDatabase {
+        return Room.databaseBuilder(
+            context,
+            ExpenseDatabase::class.java,
+            databaseName
+        )
+        .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideExpenseDao(db: ExpenseDatabase) = db.ExpenseDao()
+
+    @Provides
+    @Singleton
+    fun provideExpenseRepository(
+        dao: ExpenseDao,
+        mapper: ExpenseMapper
+    ): DataRepository =
+        DatabaseRepositoryImpl (dao,mapper)
+}
+</file>
+
+<file path="data/database/expense/Expense.kt">
+package com.example.expensetracker.data.database.expense
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+import com.example.expensetracker.domain.model.ExpenseCategory
+
+@Entity(tableName = "expenses")
+data class Expense(
+    @PrimaryKey(autoGenerate = true) val id: Long,
+    val title: String,
+    val amount: Double,
+    val category: ExpenseCategory,
+    val date: Long,
+    val description: String
+)
+</file>
+
+<file path="data/database/expense/ExpenseDao.kt">
+package com.example.expensetracker.data.database.expense
+
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface ExpenseDao {
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun add(expense: Expense)
+
+    @Update
+    suspend fun update(expense: Expense)
+
+    @Delete
+    suspend fun delete(expense: Expense)
+
+    @Query("SELECT * FROM expenses order by id desc")
+    fun getAllExpenses(): Flow<List<Expense>>
+    @Query("SELECT * FROM expenses WHERE id = :id")
+    fun getExpenseById(id: Long): Flow<Expense>
+
+}
+</file>
+
+<file path="data/database/expense/ExpenseDatabase.kt">
+package com.example.expensetracker.data.database.expense
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
+import com.example.expensetracker.data.converters.Converters
+
+@Database(entities = [Expense::class], version = 1)
+@TypeConverters(Converters::class)
+
+abstract class ExpenseDatabase: RoomDatabase(){
+    abstract fun ExpenseDao(): ExpenseDao
+}
+</file>
+
+<file path="data/database/user/DatabaseModule.kt">
+package com.example.Usertracker.data.database.Database
+
+import android.content.Context
+import androidx.room.Room
+import com.example.expensetracker.data.DataRepositores.UserRepositryImp
+import com.example.expensetracker.data.database.user.UserDao
+import com.example.expensetracker.data.database.user.UserDatabase
+import com.example.expensetracker.data.mapper.UserMapper
+import com.example.expensetracker.domain.repository.UserRepositry
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import javax.inject.Singleton
+
+@Module
+@InstallIn(SingletonComponent::class)
+object DatabaseModule {
+    private const val databaseName = "MyUserDatabase"
+
+    @Provides
+    @Singleton
+    fun provideDatabase(
+        @ApplicationContext context: Context
+    ): UserDatabase {
+        return Room.databaseBuilder(
+            context,
+            UserDatabase::class.java,
+            databaseName
+        )
+        .build()
+    }
+
+    @Provides
+    fun provideUserDao(db: UserDatabase) = db.UserDao()
+
+    @Provides
+    @Singleton
+    fun provideUserRepository(
+        dao: UserDao,
+        mapper: UserMapper
+    ): UserRepositry =
+        UserRepositryImp (dao,mapper)
+}
+</file>
+
+<file path="data/database/user/User.kt">
+package com.example.expensetracker.data.database.user
+
+import androidx.room.Entity
+import androidx.room.PrimaryKey
+
+@Entity(tableName = "users")
+data class User(
+    @PrimaryKey(autoGenerate = false) val id: Long = 1,
+    val name: String,
+    val monthlyBudget: Double,
+)
+</file>
+
+<file path="data/database/user/UserDao.kt">
+package com.example.expensetracker.data.database.user
+
+import androidx.room.Dao
+import androidx.room.Delete
+import androidx.room.Insert
+import androidx.room.OnConflictStrategy
+import androidx.room.Query
+import androidx.room.Update
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface UserDao{
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertUser(user: User)
+    @Query("SELECT * FROM users WHERE id = 1")
+    fun getUser(): Flow<User?>
+    @Update
+    suspend fun updateUser(user: User)
+    @Delete
+    suspend fun deleteUser(user: User)
+
+
+}
+</file>
+
+<file path="data/database/user/UserDatabase.kt">
+package com.example.expensetracker.data.database.user
+
+import androidx.room.Database
+import androidx.room.RoomDatabase
+
+@Database(entities = [User::class], version = 1)
+abstract class UserDatabase: RoomDatabase(){
+    abstract fun UserDao(): UserDao
+}
+</file>
+
+<file path="data/DataRepositores/RepositoryImpl.kt">
+package com.example.expensetracker.data.DataRepositores
+
+import com.example.expensetracker.domain.model.Expense
+import com.example.expensetracker.data.database.expense.ExpenseDao
+import com.example.expensetracker.data.mapper.ExpenseMapper
+import com.example.expensetracker.domain.repository.DataRepository
+import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+
+class DatabaseRepositoryImpl @Inject constructor(
+    private val expenseDao: ExpenseDao,
+    private val mapper: ExpenseMapper
+) : DataRepository {
+    override fun get(): Flow<List<Expense>> {
+        return mapper.toDomainList(expenseDao.getAllExpenses())
+    }
+
+    override fun getExpenseById(id: Long): Flow<Expense?> {
+        return mapper.toDomainFlow(expenseDao.getExpenseById(id))
+    }
+
+    override suspend fun add(expense: Expense) = expenseDao.add(mapper.toEntity(expense))
+
+
+    override suspend fun update(expense: Expense) = expenseDao.update(mapper.toEntity(expense))
+
+    override suspend fun delete(expense: Expense) = expenseDao.delete(mapper.toEntity(expense))
+
+
+}
+</file>
+
+<file path="data/DataRepositores/UserRepositryImp.kt">
+package com.example.expensetracker.data.DataRepositores
+
+import com.example.expensetracker.data.database.user.UserDao
+import com.example.expensetracker.data.mapper.UserMapper
+import com.example.expensetracker.domain.model.User
+import com.example.expensetracker.domain.repository.UserRepositry
+import kotlinx.coroutines.flow.Flow
+import javax.inject.Inject
+
+class UserRepositryImp @Inject constructor(
+    private val userDao: UserDao,
+    private val mapper: UserMapper
+): UserRepositry {
+    override fun getUser(): Flow<User?> = mapper.toDomainFlow(userDao.getUser())
+
+    override suspend fun addUser(user: User) = userDao.insertUser(mapper.toEntity(user))
+
+    override suspend fun updateUser(user: User) = userDao.updateUser(mapper.toEntity(user))
+
+    override suspend fun deleteUser(user: User) = userDao.deleteUser(mapper.toEntity(user))
+
+}
+</file>
+
+<file path="data/mapper/ExpenseMapper.kt">
+package com.example.expensetracker.data.mapper
+
+import com.example.expensetracker.data.database.expense.Expense as ExpenseEntity
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import com.example.expensetracker.domain.model.Expense
+import javax.inject.Inject
+
+class ExpenseMapper @Inject constructor() {
+
+    fun toDomain(entity: ExpenseEntity): Expense =
+        Expense(
+            id = entity.id,
+            title = entity.title,
+            amount = entity.amount,
+            category = entity.category,
+            date = entity.date,
+            description = entity.description
+        )
+
+    fun toDomainFlow(flow: Flow<ExpenseEntity>): Flow<Expense> =
+        flow.map { toDomain(it) }
+
+    fun toEntity(domain: Expense): ExpenseEntity =
+        ExpenseEntity(
+            id = domain.id,
+            title = domain.title,
+            amount = domain.amount,
+            category = domain.category,
+            date = domain.date,
+            description = domain.description
+        )
+
+
+    fun toDomainList(flow: Flow<List<ExpenseEntity>>): Flow<List<Expense>> =
+        flow.map { list -> list.map { toDomain(it) } }
+}
+</file>
+
+<file path="data/mapper/UserMapper.kt">
+package com.example.expensetracker.data.mapper
+
+import com.example.expensetracker.domain.model.User
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import javax.inject.Inject
+import com.example.expensetracker.data.database.user.User as UserEntity
+
+class UserMapper @Inject constructor() {
+    fun toDomain(entity: UserEntity): User =
+        User(
+            name = entity.name,
+            monthlyBudget = entity.monthlyBudget
+
+        )
+    fun toEntity(domain: User): UserEntity =
+        UserEntity(
+            name = domain.name,
+            monthlyBudget = domain.monthlyBudget
+        )
+    fun toDomainFlow(flow: Flow<UserEntity?>): Flow<User?> =
+        flow.map {
+            it?:return@map null
+            toDomain(it)
+        }
+
+}
+</file>
+
+<file path="domain/model/Expense.kt">
+package com.example.expensetracker.domain.model
+
+
+data class Expense(
+    val id: Long,
+    val title: String,
+    val amount: Double,
+    val category: ExpenseCategory,
+    val date: Long,
+    val description: String
+)
+
+
+enum class ExpenseCategory {
+    ALL,
+    FOOD,
+    HEALTH,
+    TRANSPORTATION,
+    ENTERTAINMENT,
+}
+</file>
+
+<file path="domain/model/User.kt">
+package com.example.expensetracker.domain.model
+
+data class User(
+    val name: String,
+    val monthlyBudget: Double,
+
+)
+</file>
+
+<file path="domain/repository/ExpenseRepository.kt">
+package com.example.expensetracker.domain.repository
+
+
+import com.example.expensetracker.domain.model.Expense
+import kotlinx.coroutines.flow.Flow
+
+interface DataRepository {
+
+    fun get(): Flow<List<Expense>>
+    fun getExpenseById(id: Long): Flow<Expense?>
+
+    suspend fun add(expense: Expense)
+
+    suspend fun update(expense: Expense)
+
+    suspend fun delete(expense: Expense)
+}
+</file>
+
+<file path="domain/repository/UserRepositry.kt">
+package com.example.expensetracker.domain.repository
+
+import com.example.expensetracker.domain.model.User
+import kotlinx.coroutines.flow.Flow
+
+interface UserRepositry {
+    fun getUser(): Flow<User?>
+    suspend fun addUser(user: User)
+    suspend fun updateUser(user: User)
+    suspend fun deleteUser(user: User)
+}
+</file>
+
+<file path="route/ExpenseNavGraph.kt">
+package com.example.expensetracker.route
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.runtime.Composable
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.NavHost
+import com.example.expensetracker.view.addEditExpense.AddEditRoute
+import com.example.expensetracker.view.dashboardDetails.DashboardDetails
+import com.example.expensetracker.view.listExpense.ExpenseListRoute
+import com.example.expensetracker.view.onboarding.onboardingRoute
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+
+fun ExpenseNavGraph(navController: NavHostController,route: String) {
+    NavHost(
+        navController = navController,
+        startDestination = route
+    ) {
+        onboardingRoute(navController = navController)
+        AddEditRoute(navController = navController)
+        ExpenseListRoute(navController = navController)
+        DashboardDetails()
+
+
+    }
+}
+</file>
+
+<file path="route/Routes.kt">
+package com.example.expensetracker.route
+
+object Routes {
+    const val home = "home"
+    const val add_Edit = "add_edit"
+    const val add = "add"
+    const val onboarding = "onboarding"
+    const val dashboard_Details ="dashboard_Details"
+    const val expenseIdArg = "expenseId"
+
+}
+</file>
+
+<file path="ui/theme/Color.kt">
+package com.example.expensetracker.ui.theme
+
+import androidx.compose.ui.graphics.Color
+
+val Purple80 = Color(0xFFD0BCFF)
+val PurpleGrey80 = Color(0xFFCCC2DC)
+val Pink80 = Color(0xFFEFB8C8)
+
+val Purple40 = Color(0xFF6650a4)
+val PurpleGrey40 = Color(0xFF625b71)
+val Pink40 = Color(0xFF7D5260)
+</file>
+
+<file path="ui/theme/Theme.kt">
+package com.example.expensetracker.ui.theme
+
+import android.app.Activity
+import android.os.Build
+import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
+import androidx.compose.material3.lightColorScheme
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
+
+private val DarkColorScheme = darkColorScheme(
+    primary = Purple80,
+    secondary = PurpleGrey80,
+    tertiary = Pink80
+)
+
+private val LightColorScheme = lightColorScheme(
+    primary = Purple40,
+    secondary = PurpleGrey40,
+    tertiary = Pink40
+
+    /* Other default colors to override
+    background = Color(0xFFFFFBFE),
+    surface = Color(0xFFFFFBFE),
+    onPrimary = Color.White,
+    onSecondary = Color.White,
+    onTertiary = Color.White,
+    onBackground = Color(0xFF1C1B1F),
+    onSurface = Color(0xFF1C1B1F),
+    */
+)
+
+@Composable
+fun ExpenseTrackerTheme(
+    darkTheme: Boolean = isSystemInDarkTheme(),
+    // Dynamic color is available on Android 12+
+    dynamicColor: Boolean = true,
+    content: @Composable () -> Unit
+) {
+    val colorScheme = when {
+        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val context = LocalContext.current
+            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        }
+
+        darkTheme -> DarkColorScheme
+        else -> LightColorScheme
+    }
+
+    MaterialTheme(
+        colorScheme = colorScheme,
+        typography = Typography,
+        content = content
+    )
+}
+</file>
+
+<file path="ui/theme/Type.kt">
+package com.example.expensetracker.ui.theme
+
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+
+// Set of Material typography styles to start with
+val Typography = Typography(
+    bodyLarge = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 16.sp,
+        lineHeight = 24.sp,
+        letterSpacing = 0.5.sp
+    )
+    /* Other default text styles to override
+    titleLarge = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Normal,
+        fontSize = 22.sp,
+        lineHeight = 28.sp,
+        letterSpacing = 0.sp
+    ),
+    labelSmall = TextStyle(
+        fontFamily = FontFamily.Default,
+        fontWeight = FontWeight.Medium,
+        fontSize = 11.sp,
+        lineHeight = 16.sp,
+        letterSpacing = 0.5.sp
+    )
+    */
+)
+</file>
+
+<file path="view/addEditExpense/AddEditExpenseRoute.kt">
+package com.example.expensetracker.view.addEditExpense
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.navigation.NavController
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.NavType
+import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import com.example.expensetracker.route.Routes
+
+private const val expenseIdArg = Routes.expenseIdArg
+@RequiresApi(Build.VERSION_CODES.O)
+fun NavGraphBuilder.AddEditRoute(navController: NavController){
+    composable(
+        route = "${Routes.add_Edit}?$expenseIdArg={$expenseIdArg}",
+        arguments =listOf(
+            navArgument(name = expenseIdArg){
+                type = NavType.LongType
+                defaultValue = -1L
+            }
+        )
+    ){AddEditExpenseScreen(navController = navController)}
+}
+
+fun NavController.toAddExpenseScreen(){
+    navigate(Routes.add_Edit)
+}
+fun NavController.toEditExpenseScreen(expenseId: Long){
+    navigate("${Routes.add_Edit}?$expenseIdArg=$expenseId")
+}
+</file>
+
+<file path="view/addEditExpense/AddEditExpenseScreen.kt">
+package com.example.expensetracker.view.addEditExpense
+
+import android.annotation.SuppressLint
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.example.expensetracker.domain.model.ExpenseCategory
+import com.example.expensetracker.view.composable.CoustemButton
+import com.example.expensetracker.view.composable.DatePickerExample
+import com.example.expensetracker.view.composable.DeleteIcon
+import com.example.expensetracker.view.composable.ExpenseTextField
+import com.example.expensetracker.view.composable.SingleChoiceWrapFilter
+import com.example.expensetracker.view.composable.VerticalSpacer
+import com.example.expensetracker.viewModel.AddEditViewModel
+import com.example.expensetracker.viewModel.state.AddEditExpenseUiState
+import com.example.expensetracker.viewModel.state.ScreenMode
+import com.example.expensetracker.viewModel.state.UiEvent
+import com.example.notaya.view.composable.dialog.DeleteAlertDialog
+
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
+@OptIn(ExperimentalMaterial3Api::class)
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun AddEditExpenseScreen(
+    navController: NavController,
+    viewModel: AddEditViewModel = hiltViewModel()
+    ){
+    val state by viewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState,
+            modifier = Modifier.clip(shape = RoundedCornerShape(16.dp))
+                .background(
+                    brush = Brush.linearGradient(
+                        listOf(
+                            Color(0xFFA9D0FF),
+                            Color(0xFF4D81AE),
+                            Color(0xFF517FFF)
+                        ),
+                        start = Offset.Zero,
+                        end = Offset.Infinite
+
+                    )
+                ),
+
+            ) },
+        topBar = {
+            TopAppBar(
+                title = { Text("Expense Tracker") },
+                actions = {
+                    if (state.mode is ScreenMode.EDIT){
+                        DeleteIcon(onClickIcon = viewModel::onClickDeleteIcon )
+                    }
+                },
+                colors = TopAppBarColors(
+                    containerColor = Color(0xff0F172A),
+                    titleContentColor = Color(0xffE5E7EB),
+                    navigationIconContentColor = Color(0xff0F172A),
+                    actionIconContentColor = Color(0xFFF44336),
+                    scrolledContainerColor = Color(0xff0F172A)
+
+
+
+                )
+
+            )
+        },
+        containerColor = Color(0xff020617)
+
+    ) {
+        AddEditExpenseContent(
+            state = state,
+            onTitleChange = viewModel::onTitleChange,
+            onAmountChange = viewModel::onAmountChange,
+            onDescriptionChange = viewModel::onDescriptionChange,
+            onCategorySelected = viewModel::onChangeCategory,
+            onClickDateDialogButton = viewModel::onClickDateDialogButton,
+            onClickSave = viewModel::onClickSave,
+
+            )
+        if (state.showDateDialog) {
+            val datePickerState = rememberDatePickerState(
+                initialSelectedDateMillis = System.currentTimeMillis(),
+                selectableDates = object : SelectableDates {
+                    @RequiresApi(Build.VERSION_CODES.O)
+                    override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                        return utcTimeMillis <= System.currentTimeMillis()
+                    }
+                }
+            )
+            DatePickerExample(
+                state = datePickerState,
+                onClickSet = { viewModel.onClickSetDate(datePickerState) },
+                onClickDismiss = viewModel::onDismissDateDialog,
+            )
+        }
+        if (state.showDeleteDialog){
+            DeleteAlertDialog(
+                onConfirm = viewModel::onConfirmDelete,
+                onDismiss = viewModel::onDissmissDelete,
+                expenseTitle = state.expenseToDelete?.title?:""
+            )
+        }
+        LaunchedEffect(viewModel) {
+            viewModel.event.collect { event ->
+                val eventResult =when(event){
+                    is UiEvent.Navigate -> TODO()
+                    is UiEvent.ShowSnackBar -> {
+                         when(event.message){
+                            "no item changed" -> snackbarHostState.showSnackbar(
+                                message = event.message,
+                                duration = SnackbarDuration.Short
+                            )
+                            else -> {
+                                navController.previousBackStackEntry
+                                    ?.savedStateHandle?.set("event",event.message)
+                                navController.popBackStack()
+                            }
+
+                        }
+
+
+                    }
+
+                    is UiEvent.DeleteExpense -> {
+                        navController.previousBackStackEntry
+                            ?.savedStateHandle
+                            ?.set("deleteExpenseId",event.expenseId)
+                        navController.popBackStack()
+                    }
+                }
+//                if (eventResult.toString() == "ActionPerformed"){
+//                    if ((eventResult as SnackbarResult).ordinal == 1){
+//                        viewModel.onUndoDeleteExpense()
+//                    }
+//                }
+            }
+        }
+
+    }
+
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun AddEditExpenseContent(
+    state: AddEditExpenseUiState,
+    onTitleChange: (String)-> Unit,
+    onAmountChange: (String)-> Unit,
+    onDescriptionChange: (String)-> Unit,
+    onClickSave: ()-> Unit,
+    onCategorySelected:(ExpenseCategory)-> Unit,
+    onClickDateDialogButton: () -> Unit,
+    modifier: Modifier = Modifier
+){
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(40.dp),
+        modifier = modifier
+            .fillMaxSize()
+
+    ) {
+        VerticalSpacer(120.dp)
+        ExpenseTextField(
+            value = state.titleValue,
+            onValueChange = onTitleChange,
+            hint = "Title",
+            singleLine = true
+        )
+        ExpenseTextField(
+            value = state.amountValue,
+            onValueChange = onAmountChange,
+            keyboardType = KeyboardType.Number,
+            hint = "Amount",
+            singleLine = true
+        )
+        ExpenseTextField(
+            value = state.descriptionValue,
+            onValueChange = onDescriptionChange,
+            hint = "Description",
+            maxLines = 5
+
+        )
+//        CoustemMultiChoiceSegmentedButtonRow(
+//            selectedCategory = state.selectedCategory,
+//            onCategorySelected = onCategorySelected,
+//            categoryList = ExpenseCategory.entries.filterNot { it.name == "ALL" }
+//        )
+        SingleChoiceWrapFilter(
+            selectedCategory = state.selectedCategory,
+            onCategorySelected = onCategorySelected,
+            categoryList = ExpenseCategory.entries.filterNot { it.name == "ALL" }
+
+        )
+        Button(
+            onClick =  onClickDateDialogButton,
+            colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xff38BDF8)
+        )  ) {
+            Text("select date")
+        }
+        Text(text = "Selected Date: ${state.selectedDate}", color = Color(0xffE5E7EB))
+
+        CoustemButton(
+            onClickSave = onClickSave,
+            text = "Save",
+            enabled = state.isSaveEnabled
+        )
+    }
+}
+</file>
+
+<file path="view/composable/dialog/dropDown/FilterDropdown.kt">
+package com.example.trainingapp.composable
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.DpOffset
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun FilterDropdown(
+    onClickDismissFilter: ()-> Unit,
+    onClickConfFilter: (String)-> Unit
+){
+    DropdownMenu(
+        expanded = true,
+        onDismissRequest = onClickDismissFilter,
+        offset = DpOffset((-20).dp,335.dp),
+        border = BorderStroke(2.dp, color = Color(0xFFE9E9E9f)),
+        shape = RoundedCornerShape(16.dp),
+        containerColor = Color(0xFFE9E9E9),
+
+        ) {
+        DropdownMenuItem(
+            text = {Text("Title", color = Color.Black)},
+            onClick = { onClickConfFilter("title") },
+
+            )
+        DropdownMenuItem(
+            text = {Text("Amount", color = Color.Black)},
+            onClick = { onClickConfFilter("amount") },
+        )
+        DropdownMenuItem(
+        text = {Text("Date", color = Color.Black)},
+        onClick = { onClickConfFilter("date") },
+    )
+        DropdownMenuItem(
+            text = {Text("Reset", color = Color.Black)},
+            onClick = { onClickConfFilter("Reset") },
+        )
+    }
+}
+</file>
+
+<file path="view/composable/dialog/dropDown/FilterIcon.kt">
+//package com.example.expensetracker.view.composable.dialog.dropDown//package com.example.trainingapp.composable
+//
+//import androidx.compose.foundation.background
+//import androidx.compose.foundation.shape.RoundedCornerShape
+//import androidx.compose.material.icons.Icons
+//import androidx.compose.material.icons.outlined.FilterList
+//import androidx.compose.material3.Icon
+//import androidx.compose.material3.IconButton
+//import androidx.compose.runtime.Composable
+//import androidx.compose.ui.Modifier
+//import androidx.compose.ui.draw.clip
+//import androidx.compose.ui.graphics.Color
+//import androidx.compose.ui.unit.dp
+//
+//@Composable
+//fun FilterIcon(
+//    onClickFilterIcon: ()-> Unit
+//){
+//    IconButton(
+//        onClick = onClickFilterIcon,
+//        modifier = Modifier
+//            .clip(RoundedCornerShape(16.dp))
+//            .background(color = Color(0xFFE3E3E3))
+//
+//    ) {
+//        Icon(
+//            imageVector = Icons.Outlined.FilterList,
+//            contentDescription = "Filter",
+//            tint = Color.Black
+//        )
+//    }
+//}
+</file>
+
+<file path="view/composable/dialog/AlertDialog.kt">
+package com.example.notaya.view.composable.dialog
+
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+
+@Composable
+fun DeleteAlertDialog(
+    onConfirm:() -> Unit,
+    onDismiss: () -> Unit,
+    expenseTitle: String,
+){
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Delete Expense $expenseTitle") },
+        text = { Text("Are you sure?") },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text("Delete", color = Color.Red)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Dismiss", color = Color.DarkGray)
+            }
+        }
+    )
+
+}
+</file>
+
+<file path="view/composable/CoustemButton.kt">
+package com.example.expensetracker.view.composable
+
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+
+@Composable
+fun CoustemButton(
+    text: String,
+    enabled: Boolean,
+    onClickSave: () -> Unit,
+
+    ) {
+    Button(
+        onClick = onClickSave,
+        modifier = Modifier
+            .size(300.dp,55.dp),
+        shape = RoundedCornerShape(18.dp),
+        enabled = enabled,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color(0xff38BDF8)
+        )
+    ) {
+        Text(text, fontSize = 20.sp)
+    }
+}
+</file>
+
+<file path="view/composable/CoustemMultiChoiceSegmentedButtonRow.kt">
+package com.example.expensetracker.view.composable
+
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.MultiChoiceSegmentedButtonRow
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.compose.material3.Text
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import com.example.expensetracker.domain.model.ExpenseCategory
+
+
+@Composable
+fun CoustemMultiChoiceSegmentedButtonRow(
+    selectedCategory: ExpenseCategory,
+    onCategorySelected: (ExpenseCategory)-> Unit,
+    categoryList : List<ExpenseCategory> =  ExpenseCategory.entries
+
+){
+    MultiChoiceSegmentedButtonRow {
+        categoryList.forEach{ label ->
+            SegmentedButton (
+                checked =  selectedCategory == label,
+                onCheckedChange = { onCategorySelected(label) },
+                colors = SegmentedButtonDefaults.colors(
+                    activeBorderColor = Color(0xFF9C27B0),
+                    activeContentColor = Color(0xffffffff),
+                    activeContainerColor = Color(0xFF44BE49)
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(5.dp),
+                shape = RoundedCornerShape(10.dp),
+//                contentPadding = PaddingValues(horizontal = 10.dp)
+            ) {
+                Text("$label".lowercase(),
+                    fontSize = 18.sp,
+                    )
+            }
+
+        }
+    }
+}
+
+
+
+
+
+
+
+@Composable
+fun SingleChoiceWrapFilter(
+    selectedCategory: ExpenseCategory,
+    onCategorySelected: (ExpenseCategory)-> Unit,
+    categoryList : List<ExpenseCategory> =  ExpenseCategory.entries) {
+
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+    ) {
+        categoryList.forEach { option ->
+            FilterChip(
+                selected = selectedCategory == option,
+                onClick = { onCategorySelected(option) },
+                label = { Text(text = option.name, color = Color(0xffE5E7EB)) },
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = Color(0xFF44BE49)
+                ),
+                modifier = Modifier
+                    .padding(start = 5.dp),
+                shape = RoundedCornerShape(10.dp),            )
+        }
+    }
+}
+</file>
+
+<file path="view/composable/DashboardTotals.kt">
+package com.example.expensetracker.view.composable
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import com.example.expensetracker.viewModel.state.DashboardUiState
+
+@Composable
+fun DashboardTotals(
+    dashboardState: DashboardUiState,
+    onClickDetails: () -> Unit = {} ,
+){
+    Column(
+        modifier = Modifier.fillMaxWidth()
+            .clickable(onClick = onClickDetails),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            TextAlignFsf16("Today: ${dashboardState.totalDay}", color = Color(0xffffffff), modifier = Modifier.weight(1F))
+            TextAlignFsf16("Week: ${dashboardState.totalWeek}",  color = Color(0xffffffff), modifier = Modifier.weight(1F))
+            TextAlignFsf16("Month: ${dashboardState.totalMonth}",  color = Color(0xffffffff), modifier = Modifier.weight(1F))
+        }
+        Row(
+            horizontalArrangement = Arrangement.SpaceAround,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            TextAlignFsf16("Salery: ${dashboardState.salery}", color = Color(0xffffffff), modifier = Modifier.weight(1F))
+            TextAlignFsf16("Balanse: ${dashboardState.balance}", color = Color(0xffffffff), modifier = Modifier.weight(1F))
+        }
+    }
+}
+</file>
+
+<file path="view/composable/DatePickerDialog.kt">
+package com.example.expensetracker.view.composable
+
+import android.annotation.SuppressLint
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DatePickerState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
+import androidx.compose.runtime.Composable
+
+@SuppressLint("SuspiciousIndentation")
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DatePickerExample(
+    onClickDismiss: () -> Unit,
+    onClickSet: () -> Unit,
+    state: DatePickerState
+) {
+            DatePickerDialog (
+                onDismissRequest = onClickDismiss,
+                confirmButton = {
+                    TextButton(
+                        onClick = onClickSet
+                    ) {
+                        Text("set")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = onClickDismiss) {
+                        Text("cancel")
+                    }
+                }
+            ) {
+                DatePicker(state = state)
+            }
+    }
+</file>
+
+<file path="view/composable/DeleteIcon.kt">
+package com.example.expensetracker.view.composable
+
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material3.Icon
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun DeleteIcon(
+    onClickIcon: ()-> Unit
+){
+    Icon(
+        imageVector = Icons.Default.Delete,
+        contentDescription = "Delete",
+        tint = Color.Red,
+        modifier = Modifier
+            .size(40.dp)
+            .clickable(onClick = onClickIcon)
+            .padding(end = 10.dp)
+    )
+
+}
+</file>
+
+<file path="view/composable/expenseCard.kt">
+package com.example.expensetracker.view.composable
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import com.example.expensetracker.viewModel.model.ExpenseUi
+
+
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun ExpenseCard(
+    expense: ExpenseUi,
+    onClickCard: (ExpenseUi) -> Unit,
+    modifier: Modifier = Modifier
+){
+
+    Card (
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = { onClickCard(expense) })
+            .padding(10.dp)
+            .shadow(
+                elevation = 20.dp,
+                shape = RoundedCornerShape(50.dp),
+                clip = false
+            )
+            .background(
+                brush = Brush.linearGradient(
+                    listOf(
+                        Color(0xFF0B1C2D),
+                        Color(0xFF102A43),
+                        Color(0xFF1E3A8A)
+                    ),
+                    start = Offset(0f, 0f),
+                    end = Offset(900f, 200f)
+
+                ),
+                shape = RoundedCornerShape(15.dp)
+
+            ),
+//        elevation = CardDefaults.cardElevation(
+//            defaultElevation = 100.dp
+//        ),
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent
+        ),
+    ) {
+        Column (
+            modifier = Modifier
+                .padding(horizontal = 20.dp, vertical = 10.dp)
+        ) {
+            Row (
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                TextFs26(expense.title, modifier = Modifier
+                    .weight(1f),
+                    color = Color(0xff38BDF8)
+                )
+                TextFs26("---->",
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 4.dp),
+                    color = Color(0xff34D399)
+                    )
+                TextFs26(expense.amount.toString(), color = Color(0xFFF5FF74))
+            }
+            TextAlignFsDf16(text = expense.category.toString(), align = TextAlign.Center, color = Color(
+                0xD5FAE860
+            )
+            )
+            TextAlignFsDf16(expense.date
+                .toString(), align = TextAlign.Right,color = Color(0xff9CA3AF))
+            TextAlignFsDf16(text = expense.description, align = TextAlign.Left, color = Color(0xff9CA3AF))
+
+        }
+    }
+}
+</file>
+
+<file path="view/composable/ExpenseTextField.kt">
+package com.example.expensetracker.view.composable
+
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun ExpenseTextField(
+    value: String,
+    onValueChange: (String)-> Unit,
+    hint: String,
+    showSearchIcon: Boolean = false,
+    horizontalPadding: Dp = 36.dp,
+    maxLines: Int = 1,
+    singleLine: Boolean = false,
+    keyboardType: KeyboardType = KeyboardType.Text
+){
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        textStyle = TextStyle(color = Color(0xffffffff)),
+        placeholder = { Text(hint, color = Color(0xFFFBFF8A)) },
+        modifier = Modifier
+            .padding(horizontal = horizontalPadding, vertical = 5.dp),
+        maxLines = maxLines,
+        singleLine = singleLine,
+        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+        trailingIcon = if (showSearchIcon) {
+            {
+                Icon(
+                    imageVector = Icons.Outlined.Search,
+                    contentDescription = "search icon",
+                    tint = Color(0xffE5E7EB)
+                    )
+            }
+            } else null,
+        shape = RoundedCornerShape(16.dp),
+        colors = TextFieldDefaults.colors(
+            focusedIndicatorColor = Color.Transparent,
+            unfocusedIndicatorColor = Color.Transparent,
+            focusedContainerColor = Color(0xFF003A6F),
+            unfocusedContainerColor = Color(0xFF102A43),
+        )
+    )
+}
+</file>
+
+<file path="view/composable/FilterIcon.kt">
+package com.example.trainingapp.composable
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.FilterList
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun FilterIcon(
+    onClickFilterIcon: ()-> Unit
+){
+    IconButton(
+        onClick = onClickFilterIcon,
+        modifier = Modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(color = Color(0xff38BDF8))
+
+    ) {
+        Icon(
+            imageVector = Icons.Outlined.FilterList,
+            contentDescription = "Filter",
+            tint = Color.Black
+        )
+    }
+}
+</file>
+
+<file path="view/composable/MonthlyBarChart.kt">
+package com.example.expensetracker.view.composable
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.DrawStyle
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.time.LocalDate
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun MonthlyBarChart(
+    data: Map<LocalDate, Double>,
+    modifier: Modifier = Modifier
+) {
+    if (data.isEmpty()) return
+
+    val maxY = data.values.maxOrNull() ?: 1.0
+    val bars = data.entries.sortedBy { it.key }
+
+    var selectedBar by remember { mutableStateOf<Pair<LocalDate, Double>?>(null) }
+
+    Column(
+        verticalArrangement = Arrangement.SpaceBetween,
+        modifier = modifier
+            .background(color = Color(0xff020617))
+            .height(270.dp)
+    ) {
+
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(240.dp)
+                .padding(horizontal = 16.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        val barWidth = size.width / bars.size
+                        val index = (offset.x / barWidth).toInt()
+                            .coerceIn(0, bars.lastIndex)
+                        selectedBar = bars[index].toPair()
+                    }
+                }
+        ) {
+            val barWidth = size.width / bars.size
+
+            // 🔹 خطوط الشبكة
+            val gridColor = Color(0x33FFFFFF)
+            repeat(4) { i ->
+                val y = size.height * (i / 3f)
+                drawLine(
+                    color = gridColor,
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1f
+                )
+            }
+
+            // 🟦 رسم الأعمدة
+            bars.forEachIndexed { index, entry ->
+                val barHeight = (entry.value.toFloat() / maxY.toFloat()) * size.height
+                val x = index * barWidth
+                val y = size.height - barHeight
+
+                drawRoundRect(
+                    color = if (selectedBar?.first == entry.key)
+                        Color.Yellow
+                    else
+                        Color(0xFF1B981F),
+                    topLeft = Offset(x + 6f, y),
+                    size = Size(barWidth - 12f, barHeight),
+                    cornerRadius = CornerRadius(12f, 12f)
+                )
+            }
+        }
+
+        // 🏷️ تواريخ الأيام أسفل الأعمدة
+        Row (
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            bars.forEach { entry ->
+                Text(
+                    text = entry.key.dayOfMonth.toString(),
+                    color = Color(0xFFCBD5E1),
+                    fontSize = 10.sp
+                )
+            }
+        }
+
+        // 🧾 القيمة المختارة
+        selectedBar?.let { (date, value) ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "${date.dayOfMonth}/${date.monthValue} → $value",
+                color = Color.White,
+                modifier = Modifier.padding(start = 16.dp)
+            )
+        }
+    }
+}
+</file>
+
+<file path="view/composable/text.kt">
+package com.example.expensetracker.view.composable
+
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.TextStyle
+@Composable
+fun TextFs26(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified ,
+    style: TextStyle = LocalTextStyle.current
+){
+    Text(
+        text,
+        fontSize = 26.sp,
+        modifier = modifier,
+        color = color,
+        style = style
+    )
+}
+
+@Composable
+fun TextFs26Aline(
+    text: String,
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified ,
+    style: TextStyle = LocalTextStyle.current,
+    align: TextAlign
+){
+    Text(
+        text,
+        fontSize = 26.sp,
+        modifier = modifier,
+        color = color,
+        style = style,
+        textAlign = align
+    )
+}
+
+@Composable
+fun TextAlignFsDf16(text: String, align: TextAlign,fontSize: TextUnit = 16.sp, color: Color = Color.Unspecified){
+    Text(text, modifier = Modifier.fillMaxWidth(), fontSize = fontSize, textAlign = align,color = color)
+
+}
+@Composable
+fun TextAlignFsf16(text: String, modifier: Modifier = Modifier, fontSize: TextUnit = 16.sp, color: Color = Color.Unspecified){
+    Text(text, modifier = modifier, fontSize = fontSize,color = color)
+
+}
+</file>
+
+<file path="view/composable/VerticalSpacer.kt">
+package com.example.expensetracker.view.composable
+
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.height
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+
+@Composable
+fun VerticalSpacer(height: Dp = 20.dp){
+    Spacer(Modifier.height(height))
+}
+</file>
+
+<file path="view/composable/WeeklyLineChart.kt">
+package com.example.expensetracker.view.composable
+//
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import java.time.LocalDate
+import kotlin.math.roundToInt
+
+//
+//@Composable
+//fun WeeklyLineChart(data: Map<LocalDate, Double>) {
+//    val points = data.entries.sortedBy { it.key }
+//
+//    Canvas (
+//        modifier = Modifier
+//            .fillMaxWidth()
+//            .background(color = Color(0xff020617))
+//            .padding(16.dp)
+//            .height(200.dp)
+//
+//    ) {
+//        if (points.isEmpty()) return@Canvas
+//
+//        val maxY = points.maxOf { it.value }.coerceAtLeast(1.0)
+//        val spaceX = size.width / (points.size - 1).coerceAtLeast(1)
+//
+//        val path = Path()
+//
+//        points.forEachIndexed { index, entry ->
+//            val x = index * spaceX
+//            val y = size.height - (entry.value / maxY * size.height)
+//
+//            if (index == 0) path.moveTo(x, y.toFloat())
+//            else path.lineTo(x, y.toFloat())
+//        }
+//
+//        drawPath(
+//            path = path,
+//            color = Color(0xFF4CAF50),
+//            style = Stroke(width = 4f, cap = StrokeCap.Round),
+//        )
+//    }
+//}
+
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun WeeklyLineChart(
+    data: Map<LocalDate, Double>,
+    modifier: Modifier = Modifier
+) {
+    if (data.isEmpty()) return
+
+    val maxY = data.values.maxOrNull() ?: 1.0
+    val points = data.entries.sortedBy { it.key }
+    var selectedPoint by remember { mutableStateOf<Pair<LocalDate, Double>?>(null) }
+
+    Column(
+        verticalArrangement = Arrangement.SpaceBetween,
+        modifier = modifier
+        .height(250.dp)
+        .background(color = Color(0xff020617))
+    ) {
+
+        Canvas(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(220.dp)
+                .padding( 16.dp)
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        val spaceX = size.width / (points.size - 1).coerceAtLeast(1)
+                        val index = (offset.x / spaceX).roundToInt()
+                            .coerceIn(0, points.lastIndex)
+                        selectedPoint = points[index].toPair()
+                    }
+                }
+        ) {
+            val spaceX = size.width / (points.size - 1).coerceAtLeast(1)
+
+            // 🔹 خطوط الشبكة
+            val gridColor = Color(0x33FFFFFF)
+            repeat(4) { i ->
+                val y = size.height * (i / 3f)
+                drawLine(
+                    color = gridColor,
+                    start = Offset(0f, y),
+                    end = Offset(size.width, y),
+                    strokeWidth = 1f
+                )
+            }
+
+            // ✏️ رسم الخط
+            val path = Path()
+            points.forEachIndexed { index, pair ->
+                val x = index * spaceX
+                val y = size.height - (pair.value.toFloat() / maxY.toFloat() * size.height)
+                if (index == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+
+            drawPath(
+                path = path,
+                color = Color(0xFF1B981F),
+                style = Stroke(width = 4f, cap = StrokeCap.Round)
+            )
+
+            // 🔴 رسم النقاط
+            points.forEachIndexed { index, pair ->
+                val x = index * spaceX
+                val y = size.height - (pair.value.toFloat() / maxY.toFloat() * size.height)
+                drawCircle(
+                    color = if (selectedPoint?.first == pair.key) Color.Yellow else Color.White,
+                    radius = if (selectedPoint?.first == pair.key) 8f else 6f,
+                    center = Offset(x, y)
+                )
+            }
+        }
+
+        // 🏷️ أسماء الأيام تحت الرسم
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            points.forEach { entry ->
+                Text(
+                    text = entry.key.dayOfWeek.name.take(3),
+                    color = Color(0xFFCBD5E1),
+                    fontSize = 12.sp
+                )
+            }
+        }
+
+        // 🧾 القيمة المختارة
+        selectedPoint?.let { (date, value) ->
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "${date.dayOfWeek.name} → $value",
+                color = Color.White,
+                modifier = Modifier.padding(start = 16.dp)
+            )
+        }
+    }
+
+//        drawPath(
+//            path = path,
+//            color = Color(0xFF1B981F),
+//            style = Stroke(width = 4f, cap = StrokeCap.Round)
+//        )
+
+
+
+}
+</file>
+
+<file path="view/dashboardDetails/DashboardDetailsRoute.kt">
+package com.example.expensetracker.view.dashboardDetails
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.navigation.NavController
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.compose.composable
+import com.example.expensetracker.route.Routes
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun NavGraphBuilder.DashboardDetails(){
+    composable(Routes.dashboard_Details){
+        DashboardDetailsScreen()
+    }
+}
+
+fun NavController.ToDashboardDetails(){
+    navigate(Routes.dashboard_Details)
+
+}
+</file>
+
+<file path="view/dashboardDetails/DashboardDetailsScreen.kt">
+package com.example.expensetracker.view.dashboardDetails
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.example.expensetracker.view.composable.MonthlyBarChart
+import com.example.expensetracker.view.composable.WeeklyLineChart
+import com.example.expensetracker.viewModel.DashboardViewModel
+import com.example.expensetracker.viewModel.state.DashboardUiState
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun DashboardDetailsScreen(
+    viewModel: DashboardViewModel = hiltViewModel()
+    ){
+    val state by viewModel.state.collectAsState()
+    Scaffold(
+        containerColor = Color(0xffffffff)
+
+    ) {
+        DashboardDetailsContent(
+            state = state,
+            modifier = Modifier.padding(it)
+        )
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+private fun DashboardDetailsContent(
+    state: DashboardUiState,
+    modifier: Modifier = Modifier
+){
+
+    Column (
+        modifier = modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(32.dp)
+    ) {
+        Text("Weekly Expenses", style = MaterialTheme.typography.titleMedium)
+        WeeklyLineChart(state.weekChart)
+
+        Text("Monthly Expenses", style = MaterialTheme.typography.titleMedium)
+        MonthlyBarChart(state.monthChart)
+    }
+}
+</file>
+
+<file path="view/listExpense/listExpenseRoute.kt">
+package com.example.expensetracker.view.listExpense
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.navigation.NavController
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.compose.composable
+import com.example.expensetracker.route.Routes
+
+@RequiresApi(Build.VERSION_CODES.O)
+fun NavGraphBuilder.ExpenseListRoute(navController: NavController){
+    composable(route = Routes.home){ExpenseListScreen(navController)}
+}
+
+fun NavController.ToHome(){
+    navigate(Routes.home){
+        popUpTo(Routes.onboarding){
+            inclusive = true
+        }
+
+    }
+}
+</file>
+
+<file path="view/listExpense/listExpenseScreen.kt">
+package com.example.expensetracker.view.listExpense
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.example.expensetracker.domain.model.ExpenseCategory
+import com.example.expensetracker.route.Routes
+import com.example.expensetracker.view.addEditExpense.toAddExpenseScreen
+import com.example.expensetracker.view.addEditExpense.toEditExpenseScreen
+import com.example.expensetracker.view.composable.DashboardTotals
+import com.example.expensetracker.view.composable.ExpenseCard
+import com.example.expensetracker.view.composable.ExpenseTextField
+import com.example.expensetracker.view.composable.SingleChoiceWrapFilter
+import com.example.expensetracker.view.composable.TextAlignFsDf16
+import com.example.expensetracker.view.composable.TextFs26
+import com.example.expensetracker.view.composable.VerticalSpacer
+import com.example.expensetracker.view.dashboardDetails.ToDashboardDetails
+import com.example.expensetracker.viewModel.DashboardViewModel
+import com.example.expensetracker.viewModel.ListExpenseViewModel
+import com.example.expensetracker.viewModel.model.ExpenseUi
+import com.example.expensetracker.viewModel.state.DashboardUiState
+import com.example.expensetracker.viewModel.state.ExpenseListUiState
+import com.example.expensetracker.viewModel.state.UiEvent
+import com.example.trainingapp.composable.FilterDropdown
+import com.example.trainingapp.composable.FilterIcon
+import kotlin.time.ExperimentalTime
+
+
+@OptIn(ExperimentalMaterial3Api::class)
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun ExpenseListScreen(
+    navController: NavController,
+    viewModel: ListExpenseViewModel = hiltViewModel(),
+    dashboardViewModel: DashboardViewModel = hiltViewModel()
+){
+    val state by viewModel.state.collectAsState()
+    val dashboardState by dashboardViewModel.state.collectAsState()
+    val sourseExpenseList by viewModel.sourseExpenseList.collectAsState()
+    val expenseList by viewModel.expenseList.collectAsState()
+    val snackbarHostState: SnackbarHostState = remember { SnackbarHostState() }
+    val savedStateHandle = navController.currentBackStackEntry?.savedStateHandle
+    val handleEvent = savedStateHandle?.getStateFlow<String?>("event",null)
+    val handleDeleteExpenseId = savedStateHandle?.getStateFlow<Long?>("deleteExpenseId",null)
+
+
+
+    Scaffold(
+        topBar = { TopAppBar(
+            title = { TextAlignFsDf16(
+                text = "your Expense 🙌      😎",
+                align = TextAlign.Center,
+                fontSize = 20.sp
+                ) },
+            colors = TopAppBarColors(
+                containerColor = Color(0xff0F172A),
+                titleContentColor = Color(0xffE5E7EB),
+                navigationIconContentColor = Color(0xff0F172A),
+                actionIconContentColor = Color(0xff0F172A),
+                scrolledContainerColor = Color(0xff0F172A)
+
+
+
+            )
+        ) },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = viewModel::navigateToAddScreen,
+                containerColor = Color(0xff38BDF8)
+            ) {
+                TextFs26(text = "+")
+            }
+       },
+        snackbarHost = { SnackbarHost(snackbarHostState,
+            modifier = Modifier
+                .clip(shape = RoundedCornerShape(16.dp))
+                .background(
+                    brush = Brush.linearGradient(
+                        listOf(
+                            Color(0xFFA9D0FF),
+                            Color(0xFF4D81AE),
+                            Color(0xFF517FFF)
+                        ),
+                        start = Offset.Zero,
+                        end = Offset.Infinite
+
+                    )
+                ),
+        ) },
+        containerColor = Color(0xff020617)
+    ) {
+
+        innerPadding ->
+        if (sourseExpenseList.isEmpty()){
+              Column(
+                  modifier = Modifier.fillMaxSize()
+                      .padding(innerPadding),
+              ) {
+                  VerticalSpacer(50.dp)
+                  DashboardTotals(dashboardState)
+                  VerticalSpacer(200.dp)
+                  EmptyExpense(
+                      text = "Add Expense to view here",
+                      onClickAddText = viewModel::navigateToAddScreen
+                  )
+              }
+
+
+        }else {
+            ExpenseListContent(
+                state = state,
+                expenseList = expenseList,
+                dashboardState = dashboardState,
+                onSearchChange = viewModel::onSearchChange,
+                onClickFilter = viewModel::onClickFilterDiloge,
+                innerPadding = innerPadding,
+                onCategorySelected = viewModel::onCategoryChange,
+                onClickCard = {
+                    viewModel.navigateToEditScreen(it)
+                },
+                onClickDetails = viewModel::navigateToDashboardDetails
+            )
+            LaunchedEffect(Unit){
+                handleEvent?.collect { event ->
+                    event?.let {
+                            snackbarHostState.showSnackbar(
+                                message = event,
+                                duration = SnackbarDuration.Short
+                            )
+                    }
+                    savedStateHandle.remove<String>("event")
+                }
+            }
+
+        }
+        LaunchedEffect(Unit) {
+            handleDeleteExpenseId?.collect {expenseId ->
+                expenseId?.let {
+                    viewModel.onConfirmDelete(expenseId)
+                }
+                savedStateHandle.remove<String>("deleteExpenseId")
+            }        }
+        LaunchedEffect(viewModel) {
+            viewModel.event.collect { event ->
+                val eventResult = when(event){
+                    is UiEvent.Navigate ->{
+                        when(event.route){
+                            Routes.add -> navController.toAddExpenseScreen()
+                            Routes.dashboard_Details -> navController.ToDashboardDetails()
+                            else -> navController.toEditExpenseScreen(event.route.toLong())
+                        }
+                    }
+                    is UiEvent.ShowSnackBar ->{
+                        snackbarHostState.showSnackbar(
+                            message = event.message,
+                            actionLabel = "Undo.?",
+                            duration = SnackbarDuration.Long
+                        )
+                    }
+                    is UiEvent.DeleteExpense -> {}
+                }
+                if (eventResult.toString() == "ActionPerformed"){
+                    if ((eventResult as SnackbarResult).ordinal == 1){
+                        viewModel.onUndoDeleteExpense()
+                    }
+                }
+
+            }
+        }
+
+        if (state.showFilterDialog) FilterDropdown(
+            onClickConfFilter = viewModel::onConfirmFilterDiloge,
+            onClickDismissFilter = viewModel::onDismissFilterDialoge
+        )
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@OptIn(ExperimentalTime::class)
+@Composable
+fun ExpenseListContent(
+    state: ExpenseListUiState,
+    dashboardState: DashboardUiState,
+    expenseList: List<ExpenseUi>,
+    onSearchChange: (String) -> Unit,
+    onClickFilter: () -> Unit,
+    onClickDetails: () -> Unit,
+    innerPadding: PaddingValues,
+    onCategorySelected: (ExpenseCategory) -> Unit,
+
+    onClickCard: (ExpenseUi) -> Unit,
+){
+    LazyColumn(
+        modifier = Modifier.padding(innerPadding)
+    ) {
+        stickyHeader {
+
+            Row(
+                horizontalArrangement = Arrangement.SpaceAround,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(color = Color(0xff020617))
+            ) {
+                ExpenseTextField(
+                    value = state.searchQuery,
+                    onValueChange = onSearchChange,
+                    hint = "Search",
+                    showSearchIcon = true,
+                    singleLine = true,
+                    horizontalPadding = 0.dp
+                )
+                FilterIcon(onClickFilterIcon = onClickFilter)
+            }
+        }
+        item {
+            SingleChoiceWrapFilter(
+                selectedCategory = state.selectedCategory,
+                onCategorySelected = onCategorySelected,
+            )
+        }
+        item {
+            DashboardTotals(
+                dashboardState = dashboardState,
+                onClickDetails = onClickDetails
+                )
+        }
+        if (expenseList.isEmpty()){
+
+            item {
+                VerticalSpacer(50.dp)
+                EmptyExpense(text = "No Result Found")
+            }
+        }
+        items(items = expenseList, key = {it.id}){
+            ExpenseCard(
+                expense = it,
+                onClickCard = onClickCard,
+                modifier = Modifier.animateItem()
+            )
+
+        }
+    }
+}
+
+
+
+@Composable
+private fun EmptyExpense(
+    modifier: Modifier = Modifier,
+    text: String,
+    onClickAddText: () -> Unit = {},
+) {
+        Text(
+            text = text,
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClickAddText),
+            textAlign = TextAlign.Center,
+            fontSize = 28.sp,
+            color = Color.Gray,
+        )
+}
+</file>
+
+<file path="view/onboarding/OnboardingRoute.kt">
+package com.example.expensetracker.view.onboarding
+
+import androidx.navigation.NavController
+import androidx.navigation.NavGraphBuilder
+import androidx.navigation.compose.composable
+import com.example.expensetracker.route.Routes
+
+
+fun NavGraphBuilder.onboardingRoute(navController: NavController){
+    composable(route = Routes.onboarding){OnboardingScreen(navController = navController)}
+}
+fun NavController.toOnboarding(){
+    navigate(Routes.onboarding)
+}
+</file>
+
+<file path="view/onboarding/OnboardingScreen.kt">
+package com.example.expensetracker.view.onboarding
+
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.NavController
+import com.example.expensetracker.view.composable.CoustemButton
+import com.example.expensetracker.view.composable.ExpenseTextField
+import com.example.expensetracker.view.composable.TextFs26Aline
+import com.example.expensetracker.view.composable.VerticalSpacer
+import com.example.expensetracker.view.listExpense.ToHome
+import com.example.expensetracker.viewModel.OnboardingViewModel
+import com.example.expensetracker.viewModel.state.OnboardingUiState
+import com.example.expensetracker.viewModel.state.UiEvent
+
+@Composable
+fun OnboardingScreen(
+    navController: NavController,
+    viewModel: OnboardingViewModel = hiltViewModel(),
+    ) {
+    val state by viewModel.state.collectAsState()
+    Scaffold(
+        containerColor = Color(0xff020617),
+    ) {paddingValues ->
+        OnboardingContent(
+            modifier = Modifier.padding(paddingValues),
+            state = state,
+            onChangeName = {viewModel.onChangeName(it)},
+            onCahngeSalary = {viewModel.onChangeSalary(it)},
+            onClickNext = viewModel::onClickNext,
+            )
+    }
+    LaunchedEffect(viewModel) {
+        viewModel.event.collect { event ->
+            when(event){
+                is UiEvent.DeleteExpense -> TODO()
+                is UiEvent.Navigate -> navController.ToHome()
+                is UiEvent.ShowSnackBar -> TODO()
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnboardingContent(
+    modifier: Modifier = Modifier,
+    state: OnboardingUiState,
+    onChangeName: (String) -> Unit,
+    onCahngeSalary: (String) -> Unit,
+    onClickNext: () -> Unit,
+
+){
+    Column (
+        modifier = modifier
+            .fillMaxSize()
+            .padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        TextFs26Aline(
+            text = "Welcome 👋",
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.headlineMedium,
+            color = Color(0xffE5E7EB),
+            align = TextAlign.Start
+
+            )
+        VerticalSpacer(24.dp)
+        ExpenseTextField(
+            value = state.nameValue,
+            onValueChange = onChangeName,
+            hint = "Name",
+            singleLine = true,
+        )
+        VerticalSpacer(16.dp)
+        ExpenseTextField(
+            value = state.salaryValue,
+            onValueChange = onCahngeSalary,
+            hint = "Salary",
+            singleLine = true,
+            keyboardType = KeyboardType.Number
+        )
+        VerticalSpacer(32.dp)
+        CoustemButton(
+            onClickSave = onClickNext,
+            text = "Next",
+            enabled = state.enableNextButton
+        )
+    }
+}
+
+@Preview
+@Composable
+private fun OnboardingContentPreview() {
+    OnboardingContent(
+        state = OnboardingUiState(),
+        onChangeName = {},
+        onCahngeSalary = {},
+        onClickNext = {}
+
+    )
+}
+</file>
+
+<file path="viewModel/mapper/ExpenseUiMapper.kt">
+package com.example.expensetracker.viewModel.mapper
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import com.example.expensetracker.domain.model.Expense
+import com.example.expensetracker.viewModel.model.ExpenseUi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
+import java.time.Instant
+import java.time.ZoneId
+import javax.inject.Inject
+
+class ExpenseUiMapper @Inject constructor(){
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun toUi(domain: Expense): ExpenseUi =
+        ExpenseUi(
+            id = domain.id,
+            title = domain.title,
+            amount = domain.amount,
+            category = domain.category,
+            date = Instant.ofEpochMilli(domain.date)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate(),
+            description = domain.description
+        )
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun toDomain(ui: ExpenseUi): Expense =
+        Expense(
+            id = ui.id,
+            title = ui.title,
+            amount = ui.amount,
+            category = ui.category,
+            date = ui.date
+                .atStartOfDay(ZoneId.systemDefault())
+                .toInstant()
+                .toEpochMilli(),
+            description = ui.description
+        )
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun toUiList(domain: Flow<List<Expense>>): Flow<List<ExpenseUi>> =
+
+
+        domain.map { domainExpenses -> domainExpenses.map { toUi(it) } }
+
+}
+</file>
+
+<file path="viewModel/mapper/UserUiMapper.kt">
+package com.example.expensetracker.viewModel.mapper
+
+import com.example.expensetracker.domain.model.User
+import com.example.expensetracker.viewModel.model.UserUi
+import javax.inject.Inject
+
+class UserUiMapper @Inject constructor() {
+
+    fun toDomain(ui: UserUi): User =
+        User(
+            name = ui.name,
+            monthlyBudget = ui.monthlyBudget
+        )
+    fun toUi(domain: User): UserUi =
+        UserUi(
+            name = domain.name,
+            monthlyBudget = domain.monthlyBudget
+        )
+}
+</file>
+
+<file path="viewModel/model/ExpenseUi.kt">
+package com.example.expensetracker.viewModel.model
+
+import com.example.expensetracker.domain.model.ExpenseCategory
+import java.time.LocalDate
+
+data class ExpenseUi(
+    val id: Long,
+    val title: String,
+    val amount: Double,
+    val category: ExpenseCategory,
+    val date: LocalDate,
+    val description: String
+
+)
+</file>
+
+<file path="viewModel/model/UserUi.kt">
+package com.example.expensetracker.viewModel.model
+
+data class UserUi(
+    val name: String = "",
+    val monthlyBudget: Double = 0.0,
+)
+</file>
+
+<file path="viewModel/state/AddEditExpenseUiState.kt">
+package com.example.expensetracker.viewModel.state
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import com.example.expensetracker.domain.model.ExpenseCategory
+import com.example.expensetracker.viewModel.model.ExpenseUi
+import java.time.LocalDate
+
+
+data class AddEditExpenseUiState @RequiresApi(Build.VERSION_CODES.O) constructor(
+
+    val titleValue: String = "",
+    val amountValue: String = "",
+    val descriptionValue: String = "",
+    val selectedDate: String = "",
+    @RequiresApi(Build.VERSION_CODES.O)
+    val selectedLocalDate: LocalDate = LocalDate.now(),
+    val mode: ScreenMode = ScreenMode.ADD,
+    val selectedCategory: ExpenseCategory = ExpenseCategory.FOOD,
+    val showDateDialog: Boolean = false,
+    val showDeleteDialog: Boolean = false,
+    val expenseToDelete: ExpenseUi? = null,
+    val isSaveEnabled: Boolean = false,
+    )
+
+sealed class ScreenMode {
+    object ADD : ScreenMode()
+    data class EDIT(val expenseId: Long) : ScreenMode()
+}
+</file>
+
+<file path="viewModel/state/DashboardUiState.kt">
+package com.example.expensetracker.viewModel.state
+
+import java.time.LocalDate
+
+data class DashboardUiState(
+    val totalDay: Double = 0.0,
+    val totalWeek: Double = 0.0,
+    val totalMonth: Double = 0.0,
+    val salery: Double = 0.0,
+    val balance: Double = 0.0,
+    val weekChart: Map<LocalDate, Double> = emptyMap(),
+    val monthChart: Map<LocalDate, Double> = emptyMap(),
+
+    )
+</file>
+
+<file path="viewModel/state/ExpenseListUiState.kt">
+package com.example.expensetracker.viewModel.state
+
+import com.example.expensetracker.domain.model.ExpenseCategory
+import java.time.LocalDate
+
+
+data class ExpenseListUiState(
+    val searchQuery: String = "",
+    val selectedCategory: ExpenseCategory = ExpenseCategory.ALL,
+    val showFilterDialog: Boolean = false,
+    val filterBy: String = "",
+    val totalDay: Double = 0.0,
+    val totalWeek: Double = 0.0,
+    val totalMonth: Double = 0.0,
+
+)
+</file>
+
+<file path="viewModel/state/OnboardingUiState.kt">
+package com.example.expensetracker.viewModel.state
+
+data class OnboardingUiState(
+    val nameValue: String = "",
+    val salaryValue: String = "",
+    val enableNextButton: Boolean = false,
+)
+</file>
+
+<file path="viewModel/state/UiEvent.kt">
+package com.example.expensetracker.viewModel.state
+
+sealed class UiEvent {
+    data class ShowSnackBar(val message: String): UiEvent()
+    data class Navigate(val route: String): UiEvent()
+    data class DeleteExpense(val expenseId: Long): UiEvent()
+}
+
+
+val snackbarAddMessage = listOf(
+    "Well… money was spent 😂",
+    "Added! At least you’re tracking it 😉📊",
+    "Money spent wisely… we hope 😜💳",
+    "Logged! Every dollar has a story 📖💰",
+    "Oops… money gone 😅💸",
+    "Spent! But tracked 😉📊",
+    "There goes the budget 😆📉",
+    "Money spent. No regrets 😎💳",
+)
+</file>
+
+<file path="viewModel/state/UserState.kt">
+package com.example.expensetracker.viewModel.state
+
+data class UserState(
+    val userStateLogin: UserStateLogin = UserStateLogin.NoUser,
+)
+
+enum class UserStateLogin{
+    HasUser,
+    NoUser
+}
+</file>
+
+<file path="viewModel/AddEditViewModel.kt">
+package com.example.expensetracker.viewModel
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.material3.DatePickerState
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.expensetracker.domain.model.ExpenseCategory
+import com.example.expensetracker.domain.repository.DataRepository
+import com.example.expensetracker.route.Routes
+import com.example.expensetracker.viewModel.mapper.ExpenseUiMapper
+import com.example.expensetracker.viewModel.model.ExpenseUi
+import com.example.expensetracker.viewModel.state.AddEditExpenseUiState
+import com.example.expensetracker.viewModel.state.ScreenMode
+import com.example.expensetracker.viewModel.state.UiEvent
+import com.example.expensetracker.viewModel.state.snackbarAddMessage
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
+import javax.inject.Inject
+
+@RequiresApi(Build.VERSION_CODES.O)
+@HiltViewModel
+class AddEditViewModel @Inject constructor(
+    savedStateHandle: SavedStateHandle,
+    private val repository: DataRepository,
+    private val mapper: ExpenseUiMapper
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(AddEditExpenseUiState())
+    val state = _state.asStateFlow()
+    private val _event = MutableSharedFlow<UiEvent>()
+    val event = _event.asSharedFlow()
+
+    private var expenseOld: ExpenseUi? = null
+
+    init {
+        val expenseId: Long? = savedStateHandle[Routes.expenseIdArg]
+        if (expenseId != null && expenseId != -1L){
+            loadExpenseData(expenseId)
+        }else{
+            _state.update {
+                it.copy(
+                    mode = ScreenMode.ADD
+                )
+            }
+        }
+    }
+
+    private fun loadExpenseData(id: Long) {
+        viewModelScope.launch {
+            repository.getExpenseById(id).firstOrNull()?.let { entity ->
+                val expense = mapper.toUi(entity)
+                expenseOld = expense
+                _state.update {
+                    it.copy(
+                        titleValue = expense.title,
+                        amountValue = expense.amount.toString(),
+                        descriptionValue = expense.description,
+                        selectedCategory = expense.category,
+                        selectedDate = expense.date.toString(),
+                        mode = ScreenMode.EDIT(id),
+                        isSaveEnabled = true
+                    )
+                }
+            }
+        }
+    }
+
+    fun onTitleChange(title: String){
+        _state.update {
+            it.copy(
+                titleValue = title,
+                isSaveEnabled = (title.isNotBlank() && title.isNotBlank())
+
+            )
+        }
+    }
+    fun onAmountChange(amount: String){
+        _state.update {
+            it.copy(
+                amountValue = amount,
+                isSaveEnabled = (amount.isNotBlank() && amount.isNotBlank())
+            )
+        }
+    }
+    fun onDescriptionChange(description: String){
+        _state.update {
+            it.copy(
+                descriptionValue = description
+            )
+        }
+    }
+
+    fun onChangeCategory(category: ExpenseCategory){
+        _state.update {
+            it.copy(
+                selectedCategory = category
+            )
+        }
+    }
+
+    fun onClickDateDialogButton(){
+        _state.update {
+            it.copy(
+                showDateDialog = true
+            )
+        }
+    }
+    fun onDismissDateDialog(){
+        _state.update {
+            it.copy(
+                showDateDialog = false
+            )
+        }
+    }
+
+    fun onClickDeleteIcon(){
+        _state.update {
+            it.copy(
+                showDeleteDialog = true,
+                expenseToDelete = expenseOld
+            )
+        }
+    }
+    fun onConfirmDelete() {
+        if (expenseOld == null) {
+            viewModelScope.launch {
+                _event.emit(UiEvent.ShowSnackBar("Expense not found"))
+            }
+        }
+        _state.update {
+            it.copy(showDeleteDialog = false)
+            }
+        expenseOld?: return
+        viewModelScope.launch {
+            _event.emit(UiEvent.DeleteExpense(expenseOld!!.id))
+        }
+
+    }
+    fun onDissmissDelete() {
+        _state.update {
+            it.copy(
+                showDeleteDialog = false,
+                expenseToDelete = null
+            )
+        }
+    }
+
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    @OptIn(ExperimentalMaterial3Api::class)
+    fun onClickSetDate(datePickerState: DatePickerState){
+        val millis = datePickerState.selectedDateMillis
+        millis?: return
+            val date = Instant.ofEpochMilli(millis)
+                .atZone(ZoneId.systemDefault())
+                .toLocalDate()
+
+            _state.update {
+                it.copy(
+                    selectedDate = date.toString(),
+                    selectedLocalDate = date,
+                    showDateDialog = false
+
+                )
+            }
+
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun onClickSave(){
+        val currentExpense = _state.value
+        val currentEntityExpense = ExpenseUi(
+            id = if (currentExpense.mode is ScreenMode.EDIT) currentExpense.mode.expenseId else 0L,
+            title = currentExpense.titleValue,
+            amount = currentExpense.amountValue.toDouble(),
+            category = currentExpense.selectedCategory,
+            date = currentExpense.selectedLocalDate,
+            description = currentExpense.descriptionValue
+        )
+        if (currentExpense.mode is ScreenMode.EDIT){
+            viewModelScope.launch {
+                val ex = repository.getExpenseById(currentExpense.mode.expenseId).first()
+                ex?: return@launch
+                val oldExpense = mapper.toUi(ex)
+
+                if (
+                    oldExpense.title == currentExpense.titleValue &&
+                    oldExpense.amount.toString() == currentExpense.amountValue &&
+                    oldExpense.description == currentExpense.descriptionValue &&
+                    oldExpense.category == currentExpense.selectedCategory&&
+                    oldExpense.date == currentExpense.selectedLocalDate
+                    ){
+                    _event.emit(UiEvent.ShowSnackBar("no item changed"))
+                }else{
+                    _state.update {
+                        it.copy(isSaveEnabled = false)
+                    }
+                    updateExpense(currentEntityExpense)
+                    _event.emit(UiEvent.ShowSnackBar("Expense Updated"))
+
+                }
+
+            }
+
+        }else{
+            addExpense(currentEntityExpense)
+            _state.update {
+                it.copy(
+                    isSaveEnabled = false
+                )
+            }
+            viewModelScope.launch {
+                val randomIndex = (0..snackbarAddMessage.lastIndex).random()
+                _event.emit(UiEvent.ShowSnackBar(snackbarAddMessage[randomIndex]))
+            }
+        }
+    }
+
+    fun addExpense(expense: ExpenseUi){
+        viewModelScope.launch {
+            repository.add(mapper.toDomain(expense))
+        }
+    }
+    fun updateExpense(expense: ExpenseUi){
+        viewModelScope.launch {
+            repository.update(mapper.toDomain(expense))
+        }
+    }
+}
+</file>
+
+<file path="viewModel/DashboardViewModel.kt">
+package com.example.expensetracker.viewModel
+
+import android.os.Build
+import android.util.Log
+import androidx.annotation.RequiresApi
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.expensetracker.domain.model.User
+import com.example.expensetracker.domain.repository.DataRepository
+import com.example.expensetracker.domain.repository.UserRepositry
+import com.example.expensetracker.viewModel.mapper.ExpenseUiMapper
+import com.example.expensetracker.viewModel.model.ExpenseUi
+import com.example.expensetracker.viewModel.state.DashboardUiState
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.temporal.WeekFields
+import javax.inject.Inject
+
+@RequiresApi(Build.VERSION_CODES.O)
+@HiltViewModel
+class DashboardViewModel @Inject constructor(
+    repository: DataRepository,
+    userRepository: UserRepositry,
+    mapper: ExpenseUiMapper,
+): ViewModel(){
+    private val _state = MutableStateFlow(DashboardUiState())
+    val state = _state.asStateFlow()
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    val sourseExpenseList: StateFlow<List<ExpenseUi>> = mapper.toUiList(repository.get())
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+    private val user: StateFlow<User?> = userRepository.getUser()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+
+        )
+
+    init {
+        viewModelScope.launch {
+            combine(
+                flow = sourseExpenseList,
+                flow2 = user
+            ){
+                expenseList, user ->
+                val today = expenseList.filter {
+                        it.date == LocalDate.now()
+                    }.sumOf { it.amount  }
+                val week = expenseList.filter {
+                    val weekFields = WeekFields.of(DayOfWeek.SATURDAY,1)
+                    (it.date.year == LocalDate.now().year && it.date.get(weekFields.weekOfWeekBasedYear()) == LocalDate.now().get(weekFields.weekOfWeekBasedYear()))
+                }.sumOf { it.amount  }
+                val month = expenseList.filter {
+                    (it.date.year == LocalDate.now().year && it.date.month == LocalDate.now().month )
+                }.sumOf { it.amount  }
+                val salery = user?.monthlyBudget?: 0.0
+                val balance = salery - month
+                val todayDate = LocalDate.now()
+                val startWeek = todayDate.minusDays(6)
+                val startMonth = todayDate.withDayOfMonth(1)
+                val monthLength = todayDate.lengthOfMonth()
+                val weekChartData: Map<LocalDate, Double> =
+                    (0..6).associate { offset ->
+                        val date = startWeek.plusDays(offset.toLong())
+                        val totalForDay = expenseList
+                            .filter { it.date == date }
+                            .sumOf { it.amount }
+                        date to totalForDay
+                    }
+
+                val monthChartData: Map<LocalDate, Double> =
+                    (1..monthLength).associate { offset ->
+                        val date = startMonth.plusDays(offset.toLong())
+                        val totalForDay = expenseList
+                            .filter { it.date == date }
+                            .sumOf { it.amount }
+                        date to totalForDay
+                    }
+
+                DashboardUiState(
+                    totalDay = today,
+                    totalWeek = week,
+                    totalMonth = month,
+                    salery = salery,
+                    balance = balance,
+                    weekChart = weekChartData,
+                    monthChart = monthChartData
+                    )
+
+            }.collect { dashboardUiState ->
+                _state.value = dashboardUiState
+            }
+
+        }
+    }
+
+}
+</file>
+
+<file path="viewModel/ListExpenseViewModel.kt">
+package com.example.expensetracker.viewModel
+
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.expensetracker.domain.model.ExpenseCategory
+import com.example.expensetracker.domain.repository.DataRepository
+import com.example.expensetracker.route.Routes
+import com.example.expensetracker.viewModel.mapper.ExpenseUiMapper
+import com.example.expensetracker.viewModel.model.ExpenseUi
+import com.example.expensetracker.viewModel.state.ExpenseListUiState
+import com.example.expensetracker.viewModel.state.UiEvent
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class ListExpenseViewModel @Inject constructor(
+    private val repository: DataRepository,
+    private val mapper: ExpenseUiMapper,
+//    private val savedStateHandle: SavedStateHandle,
+
+): ViewModel(){
+    private val _state = MutableStateFlow(ExpenseListUiState())
+    val state = _state.asStateFlow()
+
+    private val _event = MutableSharedFlow<UiEvent>()
+    val event = _event.asSharedFlow()
+    private var recentlyDeletedExpense: ExpenseUi? = null
+    @RequiresApi(Build.VERSION_CODES.O)
+    val sourseExpenseList: StateFlow<List<ExpenseUi>> = mapper
+        .toUiList(repository.get())
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    val expenseList: StateFlow<List<ExpenseUi>> = combine(
+        flow = sourseExpenseList,
+        flow2 = _state.map { it.searchQuery }.distinctUntilChanged(),
+        flow3 = _state.map { it.selectedCategory },
+        flow4 = _state.map { it.filterBy }
+    ){ expenses, query, selsectedCategory, filterBy ->
+        var expenseResult = expenses
+        if (query.isNotBlank()){
+            expenseResult = expenses.filter { it.title.contains(query,ignoreCase = true) }
+        }
+        if (filterBy.isNotEmpty()){
+            expenseResult = when(filterBy){
+                "title" -> expenseResult.sortedBy { it.title }
+                "amount" -> expenseResult.sortedBy { it.amount }
+                "date" -> expenseResult.sortedBy { it.date }
+                else -> expenseResult
+            }
+        }
+        if (selsectedCategory != ExpenseCategory.ALL){
+            expenseResult = expenseResult.filter { it.category == selsectedCategory }
+        }
+        expenseResult
+    }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    fun onSearchChange(query: String){
+        _state.update {
+            it.copy(
+                searchQuery = query
+            )
+        }
+    }
+    fun onCategoryChange(category: ExpenseCategory){
+        _state.update {
+            it.copy(
+                selectedCategory =  category
+            )
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun onClickFilterDiloge(){
+        _state.update {
+            it.copy(
+                showFilterDialog = true
+            )
+
+        }
+
+    }
+    fun onConfirmFilterDiloge(filterBy: String){
+        _state.update {
+            it.copy(
+                filterBy = filterBy,
+                showFilterDialog = false
+
+            )
+        }
+    }
+    fun onDismissFilterDialoge(){
+        _state.update {
+            it.copy(
+                showFilterDialog = false
+            )
+        }
+    }
+    fun navigateToAddScreen(){
+        viewModelScope.launch {
+            _event.emit(UiEvent.Navigate(Routes.add))
+        }
+    }
+    fun navigateToEditScreen(expense: ExpenseUi){
+        viewModelScope.launch {
+            _event.emit(UiEvent.Navigate(expense.id.toString()))
+        }
+    }
+    fun navigateToDashboardDetails() {
+        viewModelScope.launch {
+            _event.emit(UiEvent.Navigate(Routes.dashboard_Details))
+
+        }
+    }
+
+    private fun loadExpenseData(expenseId: Long) {
+        viewModelScope.launch {
+//            recentlyDeletedExpense = repository.getExpenseById(expenseId).firstOrNull()
+        }
+
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun onConfirmDelete(expenseId: Long) {
+        viewModelScope.launch {
+            val deleteExpense = repository.getExpenseById(expenseId).firstOrNull()
+            deleteExpense?:return@launch
+            val deleteExpenseUi = mapper.toUi(deleteExpense)
+            recentlyDeletedExpense = deleteExpenseUi
+            deleteExpense(deleteExpenseUi)
+            _event.emit(UiEvent.ShowSnackBar("Expense Deleted"))
+
+        }
+    }
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun onUndoDeleteExpense(){
+        recentlyDeletedExpense?:return
+        addExpense(recentlyDeletedExpense!!)
+    }
+
+
+
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun addExpense(expense: ExpenseUi){
+        viewModelScope.launch {
+            repository.add(mapper.toDomain(expense))
+        }
+    }
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun deleteExpense(expense: ExpenseUi){
+        viewModelScope.launch {
+            repository.delete(mapper.toDomain(expense))
+        }
+    }
+
+
+}
+</file>
+
+<file path="viewModel/OnboardingViewModel.kt">
+package com.example.expensetracker.viewModel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.expensetracker.domain.repository.UserRepositry
+import com.example.expensetracker.route.Routes
+import com.example.expensetracker.viewModel.mapper.UserUiMapper
+import com.example.expensetracker.viewModel.model.UserUi
+import com.example.expensetracker.viewModel.state.OnboardingUiState
+import com.example.expensetracker.viewModel.state.UiEvent
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class OnboardingViewModel @Inject constructor(
+    private val repository: UserRepositry,
+    private val mapper: UserUiMapper
+): ViewModel(){
+    private val _state = MutableStateFlow(OnboardingUiState())
+    val state = _state.asStateFlow()
+    private val _event = MutableSharedFlow<UiEvent>()
+    val event = _event.asSharedFlow()
+
+    fun onChangeName(name: String){
+        _state.update {
+            it.copy(
+                nameValue = name,
+                enableNextButton = (name.isNotBlank() && it.salaryValue.isNotBlank())
+            )
+        }
+    }
+    fun onChangeSalary(salary: String){
+        _state.update {
+            it.copy(
+                salaryValue = salary,
+                enableNextButton = (salary.isNotBlank() && it.nameValue.isNotBlank())
+            )
+        }
+    }
+
+    fun onClickNext(){
+        viewModelScope.launch {
+            addUser(UserUi(
+                name = _state.value.nameValue,
+                monthlyBudget = _state.value.salaryValue.toDouble()
+            ))
+            _event.emit(UiEvent.Navigate(Routes.home))
+        }
+    }
+
+    private suspend fun addUser(user: UserUi){
+        repository.addUser(mapper.toDomain(user))
+
+    }
+
+}
+</file>
+
+<file path="viewModel/UserStateViewModel.kt">
+package com.example.expensetracker.viewModel
+
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.expensetracker.domain.model.User
+import com.example.expensetracker.domain.repository.UserRepositry
+import com.example.expensetracker.viewModel.model.UserUi
+import com.example.expensetracker.viewModel.state.UserState
+import com.example.expensetracker.viewModel.state.UserStateLogin
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@HiltViewModel
+class UserStateViewModel @Inject constructor(
+    private val repository: UserRepositry,
+
+): ViewModel(){
+    private val _state = MutableStateFlow(UserState())
+    val state = _state.asStateFlow()
+
+    init {
+        observeUser()
+    }
+    private fun observeUser() {
+        viewModelScope.launch {
+            repository.getUser().collect { user ->
+                _state.update {
+                    it.copy(
+                        userStateLogin = if (user != null)
+                            UserStateLogin.HasUser
+                        else
+                            UserStateLogin.NoUser
+                    )
+                }
+            }
+        }
+    }
+    val getUser = repository.getUser()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
+    fun userState(){
+        if (getUser.value != null){
+            _state.update {
+                it.copy(
+                    userStateLogin = UserStateLogin.HasUser
+                )
+            }
+        }
+    }
+
+
+}
+</file>
+
+<file path="MainActivity.kt">
+package com.example.expensetracker
+
+import android.os.Build
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.annotation.RequiresApi
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.navigation.compose.rememberNavController
+import com.example.expensetracker.route.ExpenseNavGraph
+import com.example.expensetracker.route.Routes
+import com.example.expensetracker.ui.theme.ExpenseTrackerTheme
+import com.example.expensetracker.viewModel.UserStateViewModel
+import com.example.expensetracker.viewModel.state.UserStateLogin
+import dagger.hilt.android.AndroidEntryPoint
+
+@AndroidEntryPoint
+class MainActivity : ComponentActivity() {
+    @RequiresApi(Build.VERSION_CODES.O)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+        setContent {
+            ExpenseTrackerApp()
+        }
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun ExpenseTrackerApp(
+    userViewModel: UserStateViewModel = hiltViewModel()
+) {
+    val state by userViewModel.state.collectAsState()
+    val startRoute = if(state.userStateLogin == UserStateLogin.NoUser) Routes.onboarding else Routes.home
+    val navController = rememberNavController()
+    ExpenseTrackerTheme {
+        ExpenseNavGraph(navController = navController, route = startRoute)
+    }
+}
+</file>
+
+<file path="MyExpense.kt">
+package com.example.expensetracker
+
+import android.app.Application
+import dagger.hilt.android.HiltAndroidApp
+
+@HiltAndroidApp
+class MyExpense: Application()
+</file>
+
+</files>
